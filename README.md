@@ -60,6 +60,20 @@ It is useful to setup a conda environment with Python 3.7 (python3.8 not support
 
 - To run many experiments simultaneously, you can use `./src/run.py` where you can select the layouts and algorithms you want to use.
 
+### Alchemist Scenario (independent from Overcooked pipeline)
+
+- This repo also includes a standalone Alchemist environment in `AlchemistEnv.py` and a dedicated experiment entrypoint `src/alchemist_main.py`.
+- It does **not** replace `src/main.py`; it runs in parallel as an isolated sub-workflow.
+- Prepare API key file:
+  - Put one key line in `src/openai_key.txt`
+- Run a basic experiment:
+  ```
+  python src/alchemist_main.py --p0 ProAgent --p1 Greedy --episode 1 --horizon 20 --model llama-3.1-8b --api_base https://yunwu.ai/v1
+  ```
+- New module location:
+  - `src/alchemist/` (prompting, LLM client, parser, reflection loop, memory & belief revision)
+- You can also use other api platform besides yunwu.ai. Just change the parameter **api_base**.
+
 
 
 ## GPT parser choice
