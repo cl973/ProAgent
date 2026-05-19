@@ -13,15 +13,16 @@ class ProAgentAlchemist:
         player_id: str,
         model: str = "llama-3.1-8b",
         api_base: str = "https://yunwu.ai/v1",
-        key_file: str = "src\\openai_key.txt",
+        key_file: str = "src/openai_key.txt",
         memory_k: int = 5,
         max_reflection_retry: int = 3,
+        max_tokens: int = 2048,
     ):
         self.player_id = player_id
         self.system_prompt = build_system_prompt(player_id)
         self.memory = BeliefMemory(capacity=memory_k)
         self.max_reflection_retry = max_reflection_retry
-        self.client = OpenAICompatibleClient(model=model, api_base=api_base, key_file=key_file)
+        self.client = OpenAICompatibleClient(model=model, api_base=api_base, key_file=key_file, max_tokens=max_tokens)
 
         self.last_predicted_teammate_action = "WAIT"
 
@@ -71,6 +72,7 @@ class ProAgentAlchemist:
                 turn=turn,
             )
             raw_text = self.client.chat(messages)
+            print(f"[{self.player_id}] LLM raw response: {raw_text}")
             parsed = parse_cot_response(raw_text)
             parsed.Action = normalize_action(parsed.Action)
 

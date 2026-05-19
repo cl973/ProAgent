@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ProAgent - Alchemist's Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        /* 1. 玩家的绝对容器大小必须与格子大小(110)完全一致 */
+        .player-token {
+            position: absolute;
+            width: 110px;  
+            height: 110px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.5s ease-in-out;
+            z-index: 50;
+            left: 0; top: 0; 
+        }
+        .cot-card { padding: 12px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .typing-cursor::after { content: '▋'; animation: blink 1s step-start infinite; color: #94a3b8; }
+        @keyframes blink { 50% { opacity: 0; } }
+        
+        /* 2. 地图变大了，里面的图片也适当放大，看起来更协调 */
+        .grid-icon {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        .player-icon {
+            width: 90px; 
+            height: 90px;
+            object-fit: contain;
+            drop-shadow: 0 4px 6px rgba(0,0,0,0.15); /* 加点阴影更立体 */
+        }
+
+        /* 3. 新增：独立文本区域的滚动机制与隐藏级滚动条外观 */
+        .cot-text-box {
+            overflow-y: auto;
+            word-wrap: break-word;
+        }
+
+        .cot-card h3 {
+            font-size: 1.1rem;
+        }
+        /* 让内部的小滚动条更精致一些 */
+        .cot-text-box::-webkit-scrollbar { width: 4px; }
+        .cot-text-box::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-50 flex h-screen p-4 gap-4 overflow-hidden text-gray-800">
+
+    <!-- ================= 左侧：Player 1 (蓝) ================= -->
+    <div class="w-1/4 bg-white border-blue-200 border-2 rounded-2xl p-4 shadow-lg flex flex-col">
+        <div class="flex items-center justify-between mb-4 border-b pb-2">
+            <h2 class="text-blue-600 font-bold text-lg flex items-center gap-2">🤖 PLAYER 1 (PROAGENT)</h2>
+            <span class="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full animate-pulse">● ONLINE</span>
+        </div>
+        <div class="flex-1 overflow-y-auto pr-2">
+            <div class="cot-card border-l-4 border-blue-400 bg-blue-50/30">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-gray-700 text-sm">[ANALYSIS]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 148px -->
+                <p id="p1-analysis" class="text-lg text-gray-600 h-[148px] cot-text-box font-medium"></p>
+            </div>
+            <div class="cot-card border-l-4 border-purple-400 bg-purple-50/30">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-gray-700 text-sm">[BELIEF / TEAMMATE INTENT]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 148px -->
+                <p id="p1-belief" class="text-lg text-gray-600 h-[148px] cot-text-box font-medium"></p>
+            </div>
+            <div class="cot-card border-l-4 border-cyan-400 bg-cyan-50/30">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-gray-700 text-sm">[PLAN]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 148px -->
+                <pre id="p1-plan" class="text-lg text-gray-600 whitespace-pre-wrap font-sans h-[148px] cot-text-box font-medium"></pre>
+            </div>
+            <div class="cot-card border-l-4 border-blue-600 bg-blue-100/50 mt-4">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-blue-800 text-sm">[ACTION]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 74px -->
+                <p id="p1-action" class="font-bold text-blue-700 h-[74px] cot-text-box"></p>
+            </div>
+        </div>
+        <!-- Player 1 物品栏 -->
+        <div class="mt-2 border-t pt-3 flex items-center justify-between bg-gray-50 p-2 rounded-lg border">
+            <span class="text-xl font-bold text-gray-500">HOLDING:</span>
+            <div id="p1-holding" class="flex items-center gap-2 font-bold text-sm">
+                <span class="text-gray-400">None</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 中间：地图与状态 ================= -->
+    <div class="w-2/4 bg-white rounded-2xl p-4 shadow-lg flex flex-col items-center justify-between border-2 border-gray-200 min-w-fit">
+        <div class="text-center w-full">
+            <h1 class="text-4xl font-black text-gray-800 tracking-wider flex items-center justify-center gap-3 mb-2">
+                <img src="/static/cauldron.png" class="w-8 h-8 object-contain">
+                ALCHEMIST'S LAB
+            </h1>
+            
+            <div class="flex items-center justify-center w-full my-3">
+                <div class="flex items-center">
+                    <div class="w-16 h-[2px] bg-gradient-to-r from-transparent to-blue-400"></div>
+                    <div class="w-2 h-2 rounded-full bg-blue-500 shadow-sm"></div>
+                </div>
+                
+                <div id="game-status" class="mx-3 bg-white border-2 px-6 py-2 rounded-full font-bold text-xl shadow-sm flex items-center gap-3 transition-all duration-300 min-w-[180px] justify-center">
+                    <img id="game-status-icon" src="/static/sandClock.png" class="w-10 h-10 object-contain">
+                    <span id="game-status-text">Connecting...</span>
+                </div>
+                
+                <div class="flex items-center">
+                    <div class="w-2 h-2 rounded-full bg-blue-500 shadow-sm"></div>
+                    <div class="w-16 h-[2px] bg-gradient-to-l from-transparent to-blue-400"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col items-center mt-2">
+            <div class="flex ml-[60px]">
+                <div class="w-[110px] text-center font-bold text-gray-800 text-2xl">1</div>
+                <div class="w-[110px] text-center font-bold text-gray-800 text-2xl">2</div>
+                <div class="w-[110px] text-center font-bold text-gray-800 text-2xl">3</div>
+                <div class="w-[110px] text-center font-bold text-gray-800 text-2xl">4</div>
+                <div class="w-[110px] text-center font-bold text-gray-800 text-2xl">5</div>
+            </div>
+
+            <div class="flex">
+                <div class="flex flex-col w-[60px]">
+                    <div class="h-[110px] flex items-center justify-center font-bold text-gray-800 text-2xl">1</div>
+                    <div class="h-[110px] flex items-center justify-center font-bold text-gray-800 text-2xl">2</div>
+                    <div class="h-[110px] flex items-center justify-center font-bold text-gray-800 text-2xl">3</div>
+                    <div class="h-[110px] flex items-center justify-center font-bold text-gray-800 text-2xl">4</div>
+                    <div class="h-[110px] flex items-center justify-center font-bold text-gray-800 text-2xl">5</div>
+                </div>
+
+                <div class="relative w-[550px] h-[550px] border-[3px] border-gray-300 bg-white shadow-xl rounded-md">
+                    <div class="absolute inset-0 grid grid-cols-5 grid-rows-5 pointer-events-none" id="grid-bg">
+                    </div>
+                    <div id="player1" class="player-token"><img src="/static/player1.png" class="player-icon"></div>
+                    <div id="player2" class="player-token"><img src="/static/player2.png" class="player-icon"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full px-4 mt-4">
+            <div class="flex justify-center gap-6 text-[15px] font-bold mb-4 bg-gray-50 py-4 rounded-xl border border-gray-200 shadow-sm">
+                <div class="flex items-center gap-2 text-green-700">
+                    <img src="/static/herb.png" class="w-6 h-6"><span>Herb Dispenser</span>
+                </div>
+                <div class="flex items-center gap-2 text-blue-600">
+                    <img src="/static/water.png" class="w-6 h-6"><span>Well</span>
+                </div>
+                <div class="flex items-center gap-2 text-purple-600">
+                    <img src="/static/cauldron.png" class="w-6 h-6"><span>Cauldron</span>
+                </div>
+                <div class="flex items-center gap-2 text-yellow-600">
+                    <img src="/static/table.png" class="w-6 h-6"><span>Delivery Table</span>
+                </div>
+            </div>
+            <div class="flex justify-center items-center border-t pt-3 text-gray-400 font-medium text-base">
+                <span id="turn-counter" class="text-lg font-bold text-gray-500">🕒 TURN 0</span>
+                <span class="mx-6 text-gray-300">|</span>
+                <span class="text-blue-500/60 tracking-wide">Pipelined Execution</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 右侧：Player 2 (红) ================= -->
+    <div class="w-1/4 bg-white border-red-200 border-2 rounded-2xl p-4 shadow-lg flex flex-col">
+        <div class="flex items-center justify-between mb-4 border-b pb-2">
+            <h2 class="text-red-600 font-bold text-lg flex items-center gap-2">🤖 PLAYER 2 (PROAGENT)</h2>
+            <span class="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full animate-pulse">● ONLINE</span>
+        </div>
+        <div class="flex-1 overflow-y-auto pr-2">
+            <div class="cot-card border-l-4 border-red-400 bg-red-50/30">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-gray-700 text-sm">[ANALYSIS]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 148px -->
+                <p id="p2-analysis" class="text-lg text-gray-600 h-[148px] cot-text-box font-medium"></p>   
+            </div>
+            <div class="cot-card border-l-4 border-orange-400 bg-orange-50/30">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-gray-700 text-sm">[BELIEF / TEAMMATE INTENT]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 148px -->
+                <p id="p2-belief" class="text-lg text-gray-600 h-[148px] cot-text-box font-medium"></p> 
+            </div>
+            <div class="cot-card border-l-4 border-yellow-400 bg-yellow-50/30">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-gray-700 text-sm">[PLAN]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 148px -->
+                <pre id="p2-plan" class="text-lg text-gray-600 whitespace-pre-wrap font-sans h-[148px] cot-text-box font-medium"></pre> 
+            </div>
+            <div class="cot-card border-l-4 border-red-600 bg-red-100/50 mt-4">
+                <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-red-800 text-sm">[ACTION]</h3><span class="text-xs text-gray-400 clock"></span></div>
+                <!-- 设定高度 74px -->
+                <p id="p2-action" class="font-bold text-red-700 h-[74px] cot-text-box"></p>
+            </div>
+        </div>
+        <!-- Player 2 物品栏 -->
+        <div class="mt-2 border-t pt-3 flex items-center justify-between bg-gray-50 p-2 rounded-lg border">
+            <span class="text-xl font-bold text-gray-500">HOLDING:</span>
+            <div id="p2-holding" class="flex items-center gap-2 font-bold text-sm">
+                <span class="text-gray-400">None</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 异步流水线核心逻辑 ================= -->
+    <script>
+        const CELL_SIZE = 110;
+        const stepQueue =[]; 
+        let isAnimating = false; 
+        let isFetching = false;  
+        let isGameOver = false;  
+        
+        function updateClocks() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+            document.querySelectorAll('.clock').forEach(el => el.innerText = timeStr);
+        }
+
+        function initGrid() {
+            const bg = document.getElementById('grid-bg');
+            bg.innerHTML = ""; 
+            for(let i=0; i<25; i++) {
+                let cell = document.createElement('div');
+                cell.className = "border border-gray-100 flex items-center justify-center";
+                
+                const row = Math.floor(i / 5);
+                const col = i % 5;
+                
+                if(row === 0 && col === 0) cell.innerHTML = '<img src="/static/herb.png" class="grid-icon">';
+                if(row === 4 && col === 1) cell.innerHTML = '<img src="/static/water.png" class="grid-icon">';
+                if(row === 2 && col === 2) cell.innerHTML = '<img src="/static/cauldron.png" class="grid-icon">';
+                if(row === 4 && col === 4) cell.innerHTML = '<img src="/static/table.png" class="grid-icon">';
+                
+                bg.appendChild(cell);
+            }
+        }
+
+        function typeWriter(text, elementId, speed = 10) {
+            return new Promise(resolve => {
+                const el = document.getElementById(elementId);
+                el.innerHTML = "";
+                el.classList.add('typing-cursor');
+                let i = 0;
+                function type() {
+                    if (i < text.length) {
+                        el.innerHTML += text.charAt(i);
+                        i++;
+                        // 【核心修改】每次打完字，滚动条强制锁死在底部，实现向上翻转效果
+                        el.scrollTop = el.scrollHeight;
+                        setTimeout(type, speed);
+                    } else {
+                        el.classList.remove('typing-cursor');
+                        el.scrollTop = el.scrollHeight; // 结束时确保停留在底边
+                        resolve();
+                    }
+                }
+                type();
+            });
+        }
+
+        function movePlayer(playerId, posArray) {
+            const el = document.getElementById(playerId);
+            const x = posArray[0] * CELL_SIZE;
+            const y = posArray[1] * CELL_SIZE;
+            el.style.transform = `translate(${x}px, ${y}px)`;
+        }
+
+        function updateStatus(cauldron_status) {
+            const stEl = document.getElementById('game-status');
+            const stIcon = document.getElementById('game-status-icon');
+            const stText = document.getElementById('game-status-text');
+
+            const statusMap = {
+                'empty':     { text: 'Running...',   color: 'text-yellow-600', border: 'border-yellow-200', icon: '/static/sandClock.png' },
+                'herb':      { text: 'Herb in!',     color: 'text-green-600',  border: 'border-green-300',  icon: '/static/herb.png' },
+                'water':     { text: 'Water in!',    color: 'text-blue-600',   border: 'border-blue-300',   icon: '/static/water.png' },
+                'done':      { text: 'Potion ready!',color: 'text-purple-600', border: 'border-purple-300', icon: '/static/cauldron.png' },
+                'delivered': { text: 'Success!',     color: 'text-green-500',  border: 'border-green-400',  icon: '/static/tick.png' }
+            };
+            const config = statusMap[cauldron_status] || statusMap['empty'];
+
+            stEl.className = `mx-3 bg-white border-2 ${config.border} px-6 py-2 rounded-full font-bold text-xl shadow-sm flex items-center gap-3 transition-all duration-300 min-w-[180px] justify-center`;
+            stIcon.src = config.icon;
+            stText.innerText = config.text;
+            stText.className = config.color; 
+        }
+
+        function updateHolding(playerId, holdingStr) {
+            const el = document.getElementById(`${playerId}-holding`);
+            if (holdingStr === 'water') {
+                el.innerHTML = `<img src="/static/water.png" class="w-10 h-10 object-contain"> <span class="text-blue-600 text-xl">water</span>`;
+            } else if (holdingStr === 'herb') {
+                el.innerHTML = `<img src="/static/herb.png" class="w-10 h-10 object-contain"> <span class="text-green-600 text-xl">herb</span>`;
+            } else if (holdingStr === 'potion') {
+                el.innerHTML = `<img src="/static/cauldron.png" class="w-10 h-10 object-contain"> <span class="text-purple-600 text-xl">potion</span>`;
+            } else {
+                el.innerHTML = `<span class="text-gray-400 text-xl">None</span>`;
+            }
+        }
+
+        async function fetchNextStepLoop() {
+            if (isGameOver) return;
+            
+            if (stepQueue.length < 2 && !isFetching) {
+                isFetching = true;
+                try {
+                    const response = await fetch('/api/step', {method: 'POST'});
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        isGameOver = true;
+                    } else {
+                        stepQueue.push(data);
+                        if(data.state.cauldron_status === 'delivered') isGameOver = true;
+                    }
+                } catch (e) {
+                    console.error("请求报错", e);
+                    isGameOver = true;
+                }
+                isFetching = false;
+                
+                fetchNextStepLoop();
+                processUIQueue();
+            }
+        }
+
+        async function processUIQueue() {
+            if (isAnimating || stepQueue.length === 0) return;
+            
+            isAnimating = true; 
+            const data = stepQueue.shift();
+            fetchNextStepLoop();
+
+            updateClocks();
+            document.getElementById('turn-counter').innerText = `🕒 TURN ${data.state.turn}`;
+
+            await Promise.all([
+                (async () => {
+                    await Promise.all([
+                        typeWriter(data.cot1.Analysis, 'p1-analysis'),
+                        typeWriter(data.cot1.Belief, 'p1-belief')
+                    ]);
+                    await typeWriter(data.cot1.Plan, 'p1-plan');
+                    await typeWriter(data.cot1.Action, 'p1-action');
+                    if(data.state.p1_pos) movePlayer('player1', data.state.p1_pos);
+                    updateHolding('p1', data.state.players.p1.holding);
+                })(),
+                (async () => {
+                    await Promise.all([
+                        typeWriter(data.cot2.Analysis, 'p2-analysis'),
+                        typeWriter(data.cot2.Belief, 'p2-belief')
+                    ]);
+                    await typeWriter(data.cot2.Plan, 'p2-plan');
+                    await typeWriter(data.cot2.Action, 'p2-action');
+                    if(data.state.p2_pos) movePlayer('player2', data.state.p2_pos);
+                    updateHolding('p2', data.state.players.p2.holding);
+                })()
+            ]);
+
+            updateStatus(data.state.cauldron_status);
+
+            if (data.state.cauldron_status === 'delivered') {
+                return; 
+            }
+
+            setTimeout(() => {
+                isAnimating = false;
+                processUIQueue();
+            }, 10); 
+        }
+
+        window.onload = () => {
+            initGrid();
+            movePlayer('player1',[1, 1]); 
+            movePlayer('player2', [2, 0]); 
+            updateStatus('empty'); 
+            
+            setTimeout(() => {
+                fetchNextStepLoop(); 
+            }, 10);
+        };
+    </script>
+</body>
+</html>

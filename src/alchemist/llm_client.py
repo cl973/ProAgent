@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, List
 
-import openai
+from openai import OpenAI
 
 
 class OpenAICompatibleClient:
@@ -9,9 +9,9 @@ class OpenAICompatibleClient:
         self,
         model: str = "llama-3.1-8b",
         api_base: str = "https://yunwu.ai/v1",
-        key_file: str = "src\\openai_key.txt",
+        key_file: str = "src/openai_key.txt",
         temperature: float = 0.0,
-        max_tokens: int = 256,
+        max_tokens: int = 2048,
     ):
         self.model = model
         self.api_base = api_base
@@ -19,6 +19,7 @@ class OpenAICompatibleClient:
         self.max_tokens = max_tokens
         self.key_file = key_file
         self.api_key = self._load_api_key()
+        self.client = OpenAI(api_key=self.api_key, base_url=self.api_base)
 
     def _load_api_key(self) -> str:
         key_path = Path(__file__).resolve().parents[2] / self.key_file
@@ -33,12 +34,11 @@ class OpenAICompatibleClient:
         return key
 
     def chat(self, messages: List[Dict[str, str]]) -> str:
-        openai.api_key = self.api_key
-        openai.api_base = self.api_base
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
         )
-        return response["choices"][0]["message"]["content"]
+        content = response.choices[0].message.content
+        return content if content else ""

@@ -43,7 +43,7 @@ class AlchemistEnv:
         self.grid_size = 5
         self.reset()
 
-    def reset(self, p1_start: Tuple[int, int] = (0, 0), p2_start: Tuple[int, int] = (4, 1)) -> Dict:
+    def reset(self, p1_start: Tuple[int, int] = (1, 1), p2_start: Tuple[int, int] = (0, 2)) -> Dict:
         """重置环境，默认黄金剧本：P1在草药台旁，P2在水井旁"""
         self.players_pos = {"p1": list(p1_start), "p2": list(p2_start)}
         self.players_holding = {"p1": Holding.NONE, "p2": Holding.NONE}
