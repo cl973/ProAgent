@@ -43,7 +43,7 @@ class AlchemistEnv:
         self.grid_size = 5
         self.reset()
 
-    def reset(self, p1_start: Tuple[int, int] = (1, 1), p2_start: Tuple[int, int] = (0, 2)) -> Dict:
+    def reset(self, p1_start: Tuple[int, int] = (1, 1), p2_start: Tuple[int, int] = (0, 1)) -> Dict:
         """重置环境，默认黄金剧本：P1在草药台旁，P2在水井旁"""
         self.players_pos = {"p1": list(p1_start), "p2": list(p2_start)}
         self.players_holding = {"p1": Holding.NONE, "p2": Holding.NONE}
@@ -203,18 +203,11 @@ class AlchemistEnv:
     # ---------- 自然语言描述（给 LLM）----------
     def get_state_description(self, player_id: str) -> str:
         state = self.get_state_dict()
-        grid = state["grid"]
         players = state["players"]
         cs = state["cauldron_status"]
 
-        # 获取玩家位置
-        p1_pos = p2_pos = None
-        for r in range(5):
-            for c in range(5):
-                if grid[r][c] == "player1":
-                    p1_pos = (r, c)
-                elif grid[r][c] == "player2":
-                    p2_pos = (r, c)
+        p1_pos = tuple(self.players_pos["p1"])
+        p2_pos = tuple(self.players_pos["p2"])
 
         herb_pos = (0, 0)
         water_pos = (4, 1)
@@ -242,18 +235,27 @@ class AlchemistEnv:
 
         desc = f"""Turn {state['turn']}. Grid size 5x5.
 
-Static objects:
-- Herb dispenser at {herb_pos}
-- Water well at {water_pos}
-- Cauldron at {cauldron_pos}
-- Delivery point at {delivery_pos}
+Coordinate system: positions are (x, y). x is column (0=LEFT, 4=RIGHT). y is row (0=TOP, 4=BOTTOM).
+Action effects on (x, y):
+- LEFT: x decreases by 1 (move toward left)
+- RIGHT: x increases by 1 (move toward right)
+- UP: y decreases by 1 (move toward top)
+- DOWN: y increases by 1 (move toward bottom)
+Example: to go from (2, 1) to (1, 4), you need x-1 and y+3, so go LEFT once then DOWN three times.
 
-You are {player_id.upper()} at {my_pos}, holding {my_holding}.
-Teammate is at {teammate_pos}, holding {teammate_holding}.
+Static objects:
+- Herb dispenser at ({herb_pos[1]}, {herb_pos[0]})
+- Water well at ({water_pos[1]}, {water_pos[0]})
+- Cauldron at ({cauldron_pos[1]}, {cauldron_pos[0]})
+- Delivery point at ({delivery_pos[1]}, {delivery_pos[0]})
+
+You are {player_id.upper()} at ({my_pos[1]}, {my_pos[0]}), holding {my_holding}.
+Teammate is at ({teammate_pos[1]}, {teammate_pos[0]}), holding {teammate_holding}.
 
 Cauldron status: {status_text}.
 
-Global goal: brew a potion by putting herb and water into the cauldron, then take the potion and deliver it to {delivery_pos}.
+Goal: brew a potion by putting herb and water into the cauldron, wait for the potion to be ready, then take the potion and deliver it to ({delivery_pos[1]}, {delivery_pos[0]}).
+IMPORTANT: Work in parallel with your teammate. Do NOT follow or guide your teammate. If your teammate is handling one ingredient, you handle the other. If your teammate is at the cauldron, do something else productive. Both players should always be working on DIFFERENT sub-tasks.
 
 Valid actions: {ACTION_SPACE}.
 Last step error: {self.last_errors.get(player_id, 'none')}

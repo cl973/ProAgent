@@ -374,7 +374,7 @@ if __name__ == "__main__":
     parser.add_argument("--p1", type=str, default="Greedy", choices=["ProAgent", "Greedy", "Random", "Stay"])
     parser.add_argument("--horizon", type=int, default=20)
     parser.add_argument("--episode", type=int, default=1)
-    parser.add_argument("--model", type=str, default="llama-3.1-70b")
+    parser.add_argument("--model", type=str, default="llama-3.1-405b")
     parser.add_argument("--api_base", type=str, default="https://yunwu.ai/v1")
     parser.add_argument("--key_file", type=str, default="src/openai_key.txt")
     parser.add_argument("--memory_k", type=int, default=5)
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", type=str, default=None)
     parser.add_argument("--serve", type=boolean_argument, default=True)
     parser.add_argument("--port", type=int, default=5000)
-    parser.add_argument("--max_tokens", type=int, default=2048)
+    parser.add_argument("--max_tokens", type=int, default=16384)
 
     args = parser.parse_args()
     variant = vars(args)

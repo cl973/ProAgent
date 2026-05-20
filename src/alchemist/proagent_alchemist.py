@@ -16,7 +16,7 @@ class ProAgentAlchemist:
         key_file: str = "src/openai_key.txt",
         memory_k: int = 5,
         max_reflection_retry: int = 3,
-        max_tokens: int = 2048,
+        max_tokens: int = 16384,
     ):
         self.player_id = player_id
         self.system_prompt = build_system_prompt(player_id)
@@ -73,7 +73,11 @@ class ProAgentAlchemist:
             )
             raw_text = self.client.chat(messages)
             print(f"[{self.player_id}] LLM raw response: {raw_text}")
-            parsed = parse_cot_response(raw_text)
+            if not raw_text.strip():
+                print(f"[{self.player_id}] Empty LLM response, falling back to WAIT.")
+                parsed = CoTDict("API timeout", "unknown", "wait", "WAIT")
+            else:
+                parsed = parse_cot_response(raw_text)
             parsed.Action = normalize_action(parsed.Action)
 
             valid, reason = env.check_action_valid(self.player_id, parsed.Action)
